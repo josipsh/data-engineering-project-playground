@@ -1,0 +1,13 @@
+[project]
+name = "data-engineering-project-playground"
+version = "0.1.0"
+description = "Mock data pipeline playground"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastavro>=1.9.0",
+    "PyYAML>=6.0.1",
+]
+
+[dependency-groups]
+dev = []

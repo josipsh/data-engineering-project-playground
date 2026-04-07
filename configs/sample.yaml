@@ -1,0 +1,10 @@
+output_format: json
+output_path: outputs/
+number_of_dp: 1
+number_of_devices_per_fleet: 100
+number_of_fleets: 1
+dimensions: all
+rate_of_emitting_dp: "1 per minute"
+seed: 42
+start_time: "2026-02-12T00:00:00.000Z"
+duration: "1 hour"
