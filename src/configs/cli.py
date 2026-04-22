@@ -1,7 +1,13 @@
 import argparse
+from dataclasses import dataclass
 
 
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+@dataclass
+class CliParsedArgs: 
+    config_filepath: str
+    is_validate_config_enabled: bool
+
+def parse_args(argv: list[str]) -> CliParsedArgs:
     parser = argparse.ArgumentParser(
         description="Mock data generator for ocean-deployed sensor devices"
     )
@@ -16,4 +22,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Validate the config file, print it, and exit",
     )
-    return parser.parse_args(argv)
+    namespace = parser.parse_args(argv)
+    return CliParsedArgs(
+        config_filepath=namespace.config,
+        is_validate_config_enabled=namespace.validate_config,
+    )

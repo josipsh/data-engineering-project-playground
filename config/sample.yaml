@@ -9,5 +9,4 @@ error-rate:
     temperature: 0.1
     humidity: 0.25
   computer:
-    cpu_temperature: 0.1
-  antenna: 0.5
+    cpu-temperature: 0.1

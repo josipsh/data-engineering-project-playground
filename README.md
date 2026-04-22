@@ -29,10 +29,6 @@ The dimensions the device can measure are:
 - Solar Radiation
 - Salinity
 - PH
-- Dissolved Oxygen
-- Turbidity
-- Electrical Conductivity
-- Metals
 - Amount of plastic that where the size is between xx and zz
 
 We have an technology which can measure all dimensions mentioned above.
@@ -78,22 +74,19 @@ Like we said is before, nothing of this is real. So we have created an CLI which
 Here are options that CLI supports:
 - output-formats:
 	- json
-	- json_with_binary_payload
+	- json-with-binary-payload
 	- xml
-	- xml_with_binary_payload
+	- xml-with-binary-payload
 	- csv
-	- csv_with_binary_payload
+	- csv-with-binary-payload
 	- avro
-	- avro_with_binary_payload
+	- avro-with-binary-payload
 - output-type:
-	- Kafka
-	- RabbitMq
-	- S3 + some queue (to provide metadata of stored file)
-    - only S3
-- number-of-dp: basically how many datapoint we generate for each device
-	- 1 dp per selected dimension
-	- 5 dp per selected dimension
-	- etc
+	- kafka-only
+	- rabbitmq-only
+	- s3-only
+	- s3-with-kafka
+	- s3-with-rabbitmq
 - number-of-devices-per-fleet:
 	- integer
 - number-of-fleets
@@ -102,12 +95,12 @@ Here are options that CLI supports:
 	- all
 	- list of selected
 - rate-of-emitting-dp:
-	- 1 per hour
-	- 1 per minute
-	- 1 per secund
-	- 10 per secund
-	- 100 per secund (maybe not needed)
-    - <integer> per <time-window>
+	- 1-per-second
+	- 10-per-second
+	- 1-per-minute
+	- 10-per-minute
+	- 1-per-hour
+	- 10-per-hour
 - error-rate:
 	- no error
 	- some rate per component

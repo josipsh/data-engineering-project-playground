@@ -68,10 +68,6 @@ class SensorsDimensions(Enum):
     SOLAR_RADIATION        = "solar_radiation"
     SALINITY               = "salinity"
     PH                     = "ph"
-    DISSOLVED_OXYGEN       = "dissolved_oxygen"
-    TURBIDITY              = "turbidity"
-    ELECTRICAL_CONDUCTIVITY = "electrical_conductivity"
-    METALS                 = "metals"
     PLASTICS               = "plastics"
 
 class ComputerDimensions(Enum):

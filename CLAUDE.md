@@ -17,10 +17,10 @@ This project uses `uv` for Python dependency management (Python 3.11+ required).
 uv sync
 
 # Run the CLI
-uv run python src/main.py --config configs/sample.yaml
+uv run python main.py --config configs/sample.yaml
 
 # Override individual config values via flags
-uv run python src/main.py --config configs/sample.yaml --output-format avro --number-of-fleets 3
+uv run python main.py --config configs/sample.yaml --output-format avro --number-of-fleets 3
 ```
 
 No tests or linting tools are configured yet.
@@ -29,22 +29,21 @@ No tests or linting tools are configured yet.
 
 The project is pre-implementation. The spec lives in `README.md`. Key design decisions to carry through:
 
-### CLI (`src/cli_generate.py` or similar)
+### CLI (`main.py`)
 Supports a config file with CLI overrides. Parameters:
-- `output-format` — `json`, `json_with_binary_payload`, `xml`, `xml_with_binary_payload`, `csv`, `csv_with_binary_payload`, `avro`, `avro_with_binary_payload`
-- `output-type` — `kafka`, `rabbitmq`, `s3_with_queue`, `s3`
-- `number-of-dp` — datapoints per device per emission (integer)
+- `output-format` — `json`, `json-with-binary-payload`, `xml`, `xml-with-binary-payload`, `csv`, `csv-with-binary-payload`, `avro`, `avro-with-binary-payload`
+- `output-type` — `kafka-only`, `rabbitmq-only`, `s3-only`, `s3-with-kafka`, `s3-with-rabbitmq`
 - `number-of-devices-per-fleet` — integer
 - `number-of-fleets` — integer
-- `dimensions` — `all` or a comma-separated subset of the 14 measurable dimensions
-- `rate-of-emitting-dp` — `<integer> per <second|minute|hour>`
-- `error-rate` — `none` or per-component rate for injecting faults
+- `dimensions` — `all` or a list of dimension strings from the 10 measurable dimensions
+- `rate-of-emitting-dp` — `1-per-second`, `10-per-second`, `1-per-minute`, `10-per-minute`, `1-per-hour`, `10-per-hour`
+- `error-rate` — `none`, `low`, `medium`, `high`, `critical`, `certain`
 
 ### Device Model
 Devices are deployed in fleets of 100 in a 20 m × 20 m grid. Each fleet has a "flagship" device that relays data via RF. Devices have: solar panel, battery, computer, antenna/RF, and sensors. Multiple hardware generations and firmware versions exist — newer generations measure more datapoints.
 
-### Measurable Dimensions (14)
-Temperature, Humidity, CO₂, Ozone, Nitrogen Dioxide, Barometric Pressure, Solar Radiation, Salinity, pH, Dissolved Oxygen, Turbidity, Electrical Conductivity, Metals, Plastics (by size range).
+### Measurable Dimensions (10)
+Temperature, Humidity, CO₂, Ozone, Nitrogen Dioxide, Barometric Pressure, Solar Radiation, Salinity, pH, Plastics.
 
 ### Binary Payload Format (WIP per README)
 Big-endian. Approximate layout:
