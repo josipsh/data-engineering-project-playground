@@ -64,4 +64,5 @@ Big-endian. Approximate layout:
 - Do not add any package or dependency without explicit user confirmation.
 - Every piece of code must be testable. Design interfaces (e.g. dependency injection, ABCs/protocols) so tests can be written without monkey-patching. If monkey-patching is unavoidable, flag it to the user before proceeding.
 - Use `uv` for all package management (`uv add`, `uv sync`).
+- For running scripts use exclusively `UV`, no `pip`, no `python -m <script-file>`, etc
 - Prefer YAML over JSON for all config files.

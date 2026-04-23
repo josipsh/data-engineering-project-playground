@@ -97,36 +97,8 @@ def test_function_thats_being_testes_when_condition():
     assert str(caught_error.value) == 'Expected error message'
 ```
 
-# Test support files
-When the same input data or expected output objects are needed across multiple test files, extract them into a `value_consts.py` file inside the same test package. Do not create this file for data used only in a single test file — keep that data local to the file instead. Name constants in UPPER_SNAKE_CASE with explicit type annotations.
-
-```python
-# value_consts.py
-VALID_CONFIG_INPUT: dict = {
-    "output-format": "json",
-    ...
-}
-
-EXPECTED_CONFIG: Config = Config(
-    output_format=OutputFormat.JSON,
-    ...
-)
-```
-
-When a test needs to derive a variant of a shared constant (e.g., one field changed), always use `copy.deepcopy()` — never mutate the original constant directly.
-
-```python
-# Assign
-data = copy.deepcopy(VALID_CONFIG_INPUT)
-data["output-format"] = "csv"
-```
-
 # Final instructions
-- Keep each test focused on one behavior. Keep all cases in one file until the file reaches 10 test functions — at that point, stop and decide whether splitting makes sense before adding more. The decision belongs to the user, not the model. How to split depends on what makes orientation easier — common options are:
-  - by polarity: `test_<module>_positive_cases.py` / `test_<module>_negative_cases.py`
-  - by feature: `test_<module>_<feature>.py`
+- Keep each test focused on one behavior
 - Write tests as module-level functions, not inside classes
 - Always add type annotations to test function parameters
-- Test folder structure should mirror the src/ folder structure
 - Be strict and explicit as much as possible
-- When writing a tests in the file, direction should go from high level feature to low level feature, and, group features together, firstly positive tests, then negative tests
