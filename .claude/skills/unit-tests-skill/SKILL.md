@@ -44,7 +44,7 @@ def test_from_dict_when_only_error_rate_is_provided():
     assert config.dimensions.battery.battery_temperature.error_rate == ErrorRate.HIGH
     assert config.dimensions.solar_panel.current_voltage.error_rate == ErrorRate.CRITICAL
 ```
-If `# Assign` section doesn't make sense, then just write `# Assign\n# Act`. This case might happen when the test data is setup on the global level.
+If there is no local setup, collapse the two lines: write `# Assign` immediately followed by `# Act` on the next line, with no blank line between them. This applies when all inputs come from imported constants (e.g., `value_consts.py`) or are passed in as parametrize arguments.
 
 ## Parametrized tests
 Use `@pytest.mark.parametrize` for multiple scenarios of the same behavior. 
@@ -97,8 +97,35 @@ def test_function_thats_being_testes_when_condition():
     assert str(caught_error.value) == 'Expected error message'
 ```
 
+# Test support files
+When the same input data or expected output objects are needed across multiple test files, extract them into a `value_consts.py` file inside the same test package. Do not create this file for data used only in a single test file — keep that data local to the file instead. Name constants in UPPER_SNAKE_CASE with explicit type annotations.
+
+```python
+# value_consts.py
+VALID_CONFIG_INPUT: dict = {
+    "output-format": "json",
+    ...
+}
+
+EXPECTED_CONFIG: Config = Config(
+    output_format=OutputFormat.JSON,
+    ...
+)
+```
+
+When a test needs to derive a variant of a shared constant (e.g., one field changed), always use `copy.deepcopy()` — never mutate the original constant directly.
+
+```python
+# Assign
+data = copy.deepcopy(VALID_CONFIG_INPUT)
+data["output-format"] = "csv"
+```
+
 # Final instructions
-- Keep each test focused on one behavior; split happy-path and error cases into separate functions
+- Keep each test focused on one behavior. Keep all cases in one file until the file reaches 10 test functions — at that point, stop and decide whether splitting makes sense before adding more. The decision belongs to the user, not the model. How to split depends on what makes orientation easier — common options are:
+  - by polarity: `test_<module>_positive_cases.py` / `test_<module>_negative_cases.py`
+  - by feature: `test_<module>_<feature>.py`
+- Write tests as module-level functions, not inside classes
 - Always add type annotations to test function parameters
 - Test folder structure should mirror the src/ folder structure
 - Be strict and explicit as much as possible
