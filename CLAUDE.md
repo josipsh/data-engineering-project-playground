@@ -8,6 +8,22 @@ A mock data engineering playground that generates realistic environmental sensor
 
 The data flows: CLI generates binary-encoded sensor payloads → written to NDJSON/CSV/XML/Avro (or pushed to Kafka/RabbitMQ/S3).
 
+## Project Scope
+
+- Only analyze files explicitly mentioned in the request; do not explore other branches, read adjacent files, or include out-of-scope requirements without asking first.
+- When asked to work on a specific file (e.g., test_cli.py), limit analysis to that file only.
+
+## Project Setup
+
+- This project uses `uv`. Always run `uv init` before creating source files for new projects.
+- Tests belong in the root `tests/` folder.
+- Project preferences belong in this CLAUDE.md (git-tracked), NOT in global ~/.claude memory.
+
+## Planning & Design Workflow
+
+- Do not propose changes that remove LSP/type support.
+- Before writing any code, propose 2-3 design alternatives with tradeoffs for: class names, data structure shape, and function boundaries. Wait for explicit choice before implementing. Preserve LSP/type support in all options.
+
 ## Setup & Commands
 
 This project uses `uv` for Python dependency management (Python 3.11+ required).
