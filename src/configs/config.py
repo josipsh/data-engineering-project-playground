@@ -291,51 +291,20 @@ def _parse_dimensions(data: dict, errors: list[str]) -> Dimensions | None:
         errors.append(f"- Missing required parameter: `{ConfigParameters.DIMENSIONS.value}`")
         return None
     
-    valid_dimensions = ', '.join(ALL_VALID_DIMENSIONS)
-    if isinstance(dimensions_data, list) and len(dimensions_data) == 0:
-        errors.append(
-            f"- Invalid value for `{ConfigParameters.DIMENSIONS.value}` parameter.\n"
-                f"Received value is an empty list.\n"
-                f"Expected 'all' or a non-empty list of dimension strings. The valid dimensions are `{valid_dimensions}`"
-        )
+    error_rate_data, error_rate_errors = _get_valid_error_rates(error_rate_data)
+    valid_dimensions, dimension_error = _get_valid_dimensions(dimensions_data)
+    if dimension_error is not None and error_rate_errors is None:
+        errors.append(dimension_error)
+        return None
+    elif dimension_error is None and error_rate_errors is not None:
+        errors.append(error_rate_errors)
         return None
 
-    elif isinstance(dimensions_data, str) and dimensions_data != 'all':
-        errors.append(
-            f"- Invalid value for 'dimensions': {dimensions_data!r}. "
-            f"Expected 'all' or a non-empty list of dimension strings the valid dimensions are `{valid_dimensions}`"
-        )
-        return None
+    sensors_dimensions: list[SensorDimension] = [x for x in SensorDimension if x.value in valid_dimensions]
+    computer_dimensions: list[ComputerDimension] = [x for x in ComputerDimension if x.value in valid_dimensions]
+    battery_dimensions: list[BatteryDimension] = [x for x in BatteryDimension if x.value in valid_dimensions]
+    solar_panel_dimensions: list[SolarPanelDimension] = [x for x in SolarPanelDimension if x.value in valid_dimensions]
 
-    elif isinstance(dimensions_data, str) and dimensions_data == 'all':
-        sensors_dimensions: list[SensorDimension] = list(SensorDimension)
-        computer_dimensions: list[ComputerDimension] = list(ComputerDimension)
-        battery_dimensions: list[BatteryDimension] = list(BatteryDimension)
-        solar_panel_dimensions: list[SolarPanelDimension] = list(SolarPanelDimension)
-
-    elif isinstance(dimensions_data, list) and len(dimensions_data) > 0:
-        invalid_dimensions = [x for x in dimensions_data if x not in ALL_VALID_DIMENSIONS]
-        if len(invalid_dimensions) > 0:
-            invalid_dimensions_str = ', '.join(invalid_dimensions)
-            errors.append(
-                f"- Invalid value for `{ConfigParameters.DIMENSIONS.value}` parameter.\n"
-                f"Invalid dimensions are: {invalid_dimensions_str}\n"
-                f"Expected 'all' or a non-empty list of dimension strings. The valid dimensions are `{valid_dimensions}`"
-            )
-            return None
-
-        sensors_dimensions: list[SensorDimension] = [x for x in SensorDimension if x.value in dimensions_data]
-        computer_dimensions: list[ComputerDimension] = [x for x in ComputerDimension if x.value in dimensions_data]
-        battery_dimensions: list[BatteryDimension] = [x for x in BatteryDimension if x.value in dimensions_data]
-        solar_panel_dimensions: list[SolarPanelDimension] = [x for x in SolarPanelDimension if x.value in dimensions_data]
-    else:
-        errors.append(
-            "- Unexpected error accrued, this should not happen!."
-            "If this occurred, please create an issue in the "
-            "https://github.com/josipsh/data-engineering-project-playground/issues")
-        return None
-
-    error_rate_data = _get_valid_error_rates(error_rate_data, errors)
     sensor_error_rates = error_rate_data.get(Components.SENSORS, {})
     computer_error_rates = error_rate_data.get(Components.COMPUTER, {})
     battery_error_rates = error_rate_data.get(Components.BATTERY, {})
@@ -348,27 +317,64 @@ def _parse_dimensions(data: dict, errors: list[str]) -> Dimensions | None:
         solar_panel=SolarPanelDimensions.from_dict(solar_panel_dimensions, solar_panel_error_rates)
     )
 
-def _get_valid_error_rates(error_rates: dict, errors: list[str]) -> dict:
+def _get_valid_dimensions(dimensions_data: list[str]) -> tuple[list[str] | None, str | None]:
+    valid_dimensions = ', '.join(ALL_VALID_DIMENSIONS)
+    if isinstance(dimensions_data, list) and len(dimensions_data) == 0:
+        return(None, (
+            f"- Invalid value for `{ConfigParameters.DIMENSIONS.value}` parameter.\n"
+            f"Received value is an empty list.\n"
+            f"Expected 'all' or a non-empty list of dimension strings. The valid dimensions are `{valid_dimensions}`"
+        ))
+
+    elif isinstance(dimensions_data, str) and dimensions_data != 'all':
+        return(None, (
+            f"- Invalid value for 'dimensions': {dimensions_data!r}. "
+            f"Expected 'all' or a non-empty list of dimension strings the valid dimensions are `{valid_dimensions}`"
+        ))
+
+    elif isinstance(dimensions_data, str) and dimensions_data == 'all':
+        return (ALL_VALID_DIMENSIONS, None)
+
+    elif isinstance(dimensions_data, list) and len(dimensions_data) > 0:
+        invalid_dimensions = [x for x in dimensions_data if x not in ALL_VALID_DIMENSIONS]
+        if len(invalid_dimensions) > 0:
+            invalid_dimensions_str = ', '.join(invalid_dimensions)
+            return(None, (
+                f"- Invalid value for `{ConfigParameters.DIMENSIONS.value}` parameter.\n"
+                f"Invalid dimensions are: {invalid_dimensions_str}\n"
+                f"Expected 'all' or a non-empty list of dimension strings. The valid dimensions are `{valid_dimensions}`"
+            ))
+
+        return (dimensions_data, None)
+
+    return (None, (
+        "- Unexpected error accrued, this should not happen!."
+        "If this occurred, please create an issue in the "
+        "https://github.com/josipsh/data-engineering-project-playground/issues"
+    ))
+
+
+def _get_valid_error_rates(error_rates: dict) -> tuple[dict|None, str|None]:
     valid_components = [x.value for x in Components]
 
     if not isinstance(error_rates, dict):
-        errors.append(
+        return (None, (
+
             f"- Invalid value for `error-rate`: we have got `{error_rates}`. "
             'An expected value is dict with components and dimensions, e.g. {"sensors": "temperature": 0.1}'
-        )
-        return {}
-
+        ))
+    local_errors = []
     data = {}
     for component, dimensions in error_rates.items():
         if component not in valid_components:
             valid_components_str = ', '.join(valid_components)
-            errors.append(
+            local_errors.append(
                 f"- Unknown component `{component}` occurred in `error-rate` parameter. "
                 f"Valid components are: {valid_components_str}"
             )
             continue
         if not isinstance(dimensions, dict):
-            errors.append(
+            local_errors.append(
                 f"- Invalid value component {component}. We expect a `dict`, but we got `{type(dimensions).__name__}`. "
                 'An expected value is dict with components and dimensions, e.g. {"sensors": "temperature": 0.1}'
             )
@@ -379,10 +385,14 @@ def _get_valid_error_rates(error_rates: dict, errors: list[str]) -> dict:
         for dimension, rate in dimensions.items():
             dimension_enum, error_rate, error = _get_valid_error_rate_data(comp, dimension, rate)
             if error is not None:
-                errors.append(error)
+                local_errors.append(error)
 
             data[comp][dimension_enum] = error_rate
-    return data
+
+    if len(local_errors) >0:
+        return (None, "\n".join(local_errors))
+   
+    return (data, None)
 
 def _get_valid_error_rate_data(
     component: Components,
