@@ -4,13 +4,13 @@ description: Instructions of how to plan the test cases. Use it every time when 
 compatibility: uv, python, pytest
 ---
 
-Every time when you are asked to create a plan for writing a unit test, do the following:
-[ ] Load `/unit-tests-skill` — naming conventions and structure rules from that skill apply to all test cases planned here
-[ ] Identify what function should be tested
-[ ] Identify the test cases that each function should have
-[ ] Determine what test cases are single vs what test can be parameterized, always prefer parametrized tests
-[ ] Draft all test implementations before showing the plan — see Reporting Format below
-[ ] Report using the Reporting Format below
+Every time when you are asked to create a plan for writing a unit test, do the following:  
+[ ] Load `/unit-tests-skill` — naming conventions and structure rules from that skill apply to all test cases planned here  
+[ ] Identify what function should be tested  
+[ ] Identify the test cases that each function should have  
+[ ] Determine what test cases are single vs what test can be parameterized, always prefer parametrized tests  
+[ ] Draft all test implementations before showing the plan — see Reporting Format below  
+[ ] Report using the Reporting Format below  
 
 ---
 

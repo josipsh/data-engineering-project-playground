@@ -23,7 +23,7 @@ Examples when test function contains a multiple condition:
 Every test must use and AAA pattern. AAA stands for Assign, Act and Assert section. Always separate these section with comments, put the comments are above the section itself.
 
 Example:
-```
+``` python
 def test_from_dict_when_only_error_rate_is_provided():
     # Assign
     data = {

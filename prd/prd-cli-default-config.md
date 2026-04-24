@@ -40,75 +40,89 @@ At this stage, all configuration comes exclusively from the file — there are n
 
 ### 4.2 Configuration Parameters
 
-The config file must define all of the following parameters. All parameters are required except `error-rate`, which is optional — if omitted, it is treated as `none` (no errors injected).
+The config file must define all of the following parameters. All parameters are required except `error-rate`, which is optional — if omitted, no errors are injected (all error rates default to `none`).
 
 | Parameter | Expected Values |
 |---|---|
-| `output-format` | One of: `json`, `json-with-binary-payload`, `xml`, `xml-with-binary-payload`, `csv`, `csv-with-binary-payload`, `avro`, `avro_with_binary_payload` |
+| `output-format` | One of: `json`, `json-with-binary-payload`, `xml`, `xml-with-binary-payload`, `csv`, `csv-with-binary-payload`, `avro`, `avro-with-binary-payload` |
 | `output-type` | One of: `kafka-only`, `rabbitmq-only`, `s3-only`, `s3-with-kafka`, `s3-with-rabbitmq` |
 | `number-of-devices-per-fleet` | Positive integer |
 | `number-of-fleets` | Positive integer |
 | `dimensions` | Either the literal string `all`, or a list of one or more values from the full set of valid dimensions across all components (see 4.3) |
-| `rate-of-emitting-dp` | String matching the pattern `<positive integer>-per-<second\|minute\|hour>` (e.g., `10-per-second`) |
-| `error-rate` | **Optional.** Either omitted (equivalent to `none`), the literal string `none`, or a per-component/dimension error rate (see 4.4) |
+| `rate-of-emitting-dp` | One of: `1-per-second`, `10-per-second`, `1-per-minute`, `10-per-minute`, `1-per-hour`, `10-per-hour` |
+| `error-rate` | **Optional.** If omitted, all error rates default to `none` (no errors injected). When provided, must use a nested YAML mapping structure keyed by component (see 4.4). |
 
 ### 4.3 Valid Dimension Values
 
-Each device component exposes its own set of measurable dimensions. When `dimensions` is `all`, all dimensions from all components are included. Otherwise, each named value must belong to the set below.
+Each device component exposes its own set of measurable dimensions. When `dimensions` is `all`, all dimensions from all components are included. Otherwise, each named value must belong to the set below. All dimension values use hyphens as separators.
 
-**`sensors` component (14 dimensions):**
-`temperature`, `humidity`, `co2`, `ozone`, `nitrogen_dioxide`, `barometric_pressure`, `solar_radiation`, `salinity`, `ph`, `dissolved_oxygen`, `turbidity`, `electrical_conductivity`, `metals`, `plastics`
+**`sensors` component (10 dimensions):**
+`temperature`, `humidity`, `co2`, `ozone`, `nitrogen-dioxide`, `barometric-pressure`, `solar-radiation`, `salinity`, `ph`, `plastics`
 
 **`computer` component (2 dimensions):**
-`cpu_temperature`, `cpu_utilization`
+`cpu-temperature`, `cpu-utilization`
 
 **`battery` component (2 dimensions):**
-`battery_temperature`, `battery_percentage_level`
+`battery-temperature`, `battery-percentage-level`
 
-**`solar_panel` component (2 dimensions):**
-`current_voltage`, `current_amp`
-
-**`antenna` component:** no measurable dimensions — only a component-level error rate applies (see 4.4).
+**`solar-panel` component (2 dimensions):**
+`current-voltage`, `current-amp`
 
 ### 4.4 Error Rate Format
 
-When `error-rate` is omitted from the config file, it is treated as `none` — no errors are injected.
+When `error-rate` is omitted from the config file, all error rates default to `none` — no errors are injected.
 
 When `error-rate` is explicitly provided, it must use a nested YAML mapping structure keyed by component. Each component supports its own set of per-dimension rates, matching the dimension sets defined in 4.3.
 
 | Component | Per-dimension keys available |
 |---|---|
-| `sensors` | `temperature`, `humidity`, `co2`, `ozone`, `nitrogen_dioxide`, `barometric_pressure`, `solar_radiation`, `salinity`, `ph`, `dissolved_oxygen`, `turbidity`, `electrical_conductivity`, `metals`, `plastics` |
-| `computer` | `cpu_temperature`, `cpu_utilization` |
-| `battery` | `battery_temperature`, `battery_percentage_level` |
-| `solar_panel` | `current_voltage`, `current_amp` |
-| `antenna` | _(no sub-dimensions — accepts only a single top-level rate value)_ |
+| `sensors` | `temperature`, `humidity`, `co2`, `ozone`, `nitrogen-dioxide`, `barometric-pressure`, `solar-radiation`, `salinity`, `ph`, `plastics` |
+| `computer` | `cpu-temperature`, `cpu-utilization` |
+| `battery` | `battery-temperature`, `battery-percentage-level` |
+| `solar-panel` | `current-voltage`, `current-amp` |
 
-Each rate must be a value in the range `[0.0, 1.0]`. Only the components and dimensions that should have errors need to be listed — any entry omitted from the map is treated as having no error rate (equivalent to `0.0`).
+Each rate must be one of the following exact values: `0.0`, `0.1`, `0.25`, `0.5`, `0.75`, `1.0`. Only the components and dimensions that should have errors need to be listed — any entry omitted from the map defaults to `0.0` (no errors).
 
 ### 4.5 Validation Behavior
 
 5. If any required parameter (all except `error-rate`) is missing from the config file, the CLI must exit with a non-zero status code and print which parameter is missing to stderr.
 6. If any parameter contains an invalid value, the CLI must exit with a non-zero status code and print which parameter is invalid and what values are expected, to stderr.
-7. Validation must run in both `--validate-config` mode and execute mode — the mocking flow must never start with an invalid config.
+7. All validation errors are collected before reporting — the user sees every problem at once, not just the first one.
+8. Validation must run in both `--validate-config` mode and execute mode — the mocking flow must never start with an invalid config.
+9. If an unrecognised parameter key is present in the config file, the CLI must report it as an error (guards against typos).
 
 ### 4.6 Config Object
 
-8. On successful validation, the configuration must be represented as a single config object that encapsulates all parameters.
-9. The config object must be printable as a flat key-value map (one `key: value` per line) via its string representation. Keys must use the original YAML key names (e.g., `output-format`, not `output_format`).
+10. On successful validation, the configuration must be represented as a single config object that encapsulates all parameters.
+11. The config object exposes a `to_dict()` method that returns a nested dictionary of all parameters, using the original YAML key names (hyphenated). The `dimensions` key maps to a nested structure organised by component, then by dimension, each with `is_enabled` and `error_rate` fields.
 
 ### 4.7 Validate-and-Print Mode (`--validate-config`)
 
-10. After successful validation, the CLI must print the config object to stdout and exit with status code `0`.
+12. After successful validation, the CLI must print the config object (via `yaml.dump(config.to_dict())`) to stdout and exit with status code `0`.
 
 ### 4.8 Execute Mode (no `--validate-config`)
 
-11. After successful validation, the CLI must print `Executing started....` to stdout and exit with status code `0`.
-12. No data generation or further processing is required at this stage.
+13. After successful validation, the CLI must print `Executing started....` to stdout and exit with status code `0`.
+14. No data generation or further processing is required at this stage.
 
 ### 4.9 Sample Config File
 
-13. A sample config file must be included at `config/sample.yaml` with valid dummy values for all parameters. This file serves as a reference for users.
+15. A sample config file must be included at `config/sample.yaml` with valid dummy values for all parameters. This file serves as a reference for users.
+
+```yaml
+output-format: json
+output-type: kafka-only
+number-of-devices-per-fleet: 50
+number-of-fleets: 5
+dimensions: all
+rate-of-emitting-dp: 10-per-second
+error-rate:
+  sensors:
+    temperature: 0.1
+    humidity: 0.25
+  computer:
+    cpu-temperature: 0.1
+```
 
 ---
 
@@ -117,7 +131,6 @@ Each rate must be a value in the range `[0.0, 1.0]`. Only the components and dim
 - CLI flag overrides of config values — covered in a separate PRD.
 - Any actual data generation or output beyond the stub message.
 - Support for config formats other than YAML.
-- Optional or defaulted parameters — all parameters are required in this step.
 - Hot-reloading or watching the config file for changes.
 
 ---
@@ -126,14 +139,14 @@ Each rate must be a value in the range `[0.0, 1.0]`. Only the components and dim
 
 - The config file format is YAML.
 - The `config/` directory must exist at the project root.
-- The CLI entry point is `src/main.py`.
+- The CLI entry point is `main.py` at the project root.
 
 ---
 
 ## 7. Success Metrics
 
-- Running `uv run python src/main.py --config config/sample.yaml --validate-config` prints all 8 config parameters and exits with code `0`.
-- Running `uv run python src/main.py --config config/sample.yaml` (without `--validate-config`) prints `Executing started....` and exits with code `0`.
+- Running `uv run python main.py --config config/sample.yaml --validate-config` prints the config as nested YAML and exits with code `0`.
+- Running `uv run python main.py --config config/sample.yaml` (without `--validate-config`) prints `Executing started....` and exits with code `0`.
 - Running with a missing parameter, an invalid value, or a non-existent file prints an error to stderr and exits with a non-zero code — in both modes.
 - No component other than the CLI entry point needs to re-read the config file — all downstream use goes through the config object.
 

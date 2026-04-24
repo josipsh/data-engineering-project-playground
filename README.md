@@ -71,41 +71,66 @@ Suggestions of the following:
 
 # CLI for generating mock data
 Like we said is before, nothing of this is real. So we have created an CLI which can generate the mock data.
-Here are options that CLI supports:
-- output-formats:
-	- json
-	- json-with-binary-payload
-	- xml
-	- xml-with-binary-payload
-	- csv
-	- csv-with-binary-payload
-	- avro
-	- avro-with-binary-payload
-- output-type:
-	- kafka-only
-	- rabbitmq-only
-	- s3-only
-	- s3-with-kafka
-	- s3-with-rabbitmq
-- number-of-devices-per-fleet:
-	- integer
-- number-of-fleets
-	- integer
-- dimensions: for which data will be generated
-	- all
-	- list of selected
-- rate-of-emitting-dp:
-	- 1-per-second
-	- 10-per-second
-	- 1-per-minute
-	- 10-per-minute
-	- 1-per-hour
-	- 10-per-hour
-- error-rate:
-	- no error
-	- some rate per component
 
-The CLI can be configure via config file and/or overridden by CLI parameters 
+## Usage
+
+```bash
+# Validate config and print it
+uv run python main.py --config config/sample.yaml --validate-config
+
+# Run the generator
+uv run python main.py --config config/sample.yaml
+```
+
+All configuration comes from the YAML config file (`--config` is required). There are no CLI flag overrides.
+
+## CLI flags
+
+| Flag | Required | Description |
+|---|---|---|
+| `--config PATH` | Yes | Path to the YAML configuration file |
+| `--validate-config` | No | Validate and print the config, then exit |
+
+## Config file parameters
+
+- `output-format`:
+	- `json`
+	- `json-with-binary-payload`
+	- `xml`
+	- `xml-with-binary-payload`
+	- `csv`
+	- `csv-with-binary-payload`
+	- `avro`
+	- `avro-with-binary-payload`
+- `output-type`:
+	- `kafka-only`
+	- `rabbitmq-only`
+	- `s3-only`
+	- `s3-with-kafka`
+	- `s3-with-rabbitmq`
+- `number-of-devices-per-fleet`: positive integer
+- `number-of-fleets`: positive integer
+- `dimensions`: for which data will be generated
+	- `all`
+	- list of dimension strings — valid values: `temperature`, `humidity`, `co2`, `ozone`, `nitrogen-dioxide`, `barometric-pressure`, `solar-radiation`, `salinity`, `ph`, `plastics`, `cpu-temperature`, `cpu-utilization`, `battery-temperature`, `battery-percentage-level`, `current-voltage`, `current-amp`
+- `rate-of-emitting-dp`:
+	- `1-per-second`
+	- `10-per-second`
+	- `1-per-minute`
+	- `10-per-minute`
+	- `1-per-hour`
+	- `10-per-hour`
+- `error-rate` *(optional)*: nested mapping of component → dimension → rate. Valid components: `sensors`, `computer`, `battery`, `solar-panel`. Valid rates: `0.0`, `0.1`, `0.25`, `0.5`, `0.75`, `1.0`. Omit the key entirely to inject no errors.
+
+Example:
+```yaml
+error-rate:
+  sensors:
+    temperature: 0.1
+    humidity: 0.25
+  computer:
+    cpu-temperature: 0.5
+```
 
 # Binary-format-specification
 When the output is chosen in the binary format, the following will be the specification.

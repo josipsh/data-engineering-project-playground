@@ -8,17 +8,30 @@
 ## File Structure
 
 ```
+main.py                              — entry point: wires CLI → loader → Config, dispatches modes
 src/
-  main.py           — entry point: wires CLI → loader → Config, dispatches modes
-  cli.py            — argparse setup, CLI-only concerns (args, help text)
-  config.py         — Config domain model: enums, value objects, validation, factory
-  config_loader.py  — IO only: reads YAML file, returns Config
+  configs/
+    cli.py                           — argparse setup, returns CliParsedArgs dataclass
+    config.py                        — Config aggregate + component dimension dataclasses + validation
+    config_parameters_enums.py       — ConfigParameters and Components enums
+    dimensions_enums.py              — SensorDimension, ComputerDimension, BatteryDimension, SolarPanelDimension
+    output_enums.py                  — OutputFormat, OutputType
+    rate_enums.py                    — EmitRate, ErrorRate
+  errors/
+    config_error.py                  — ConfigError (raised on invalid config content)
+    yaml_error.py                    — YamlError (raised on file access failure)
+  utils/
+    yaml_loader.py                   — IO only: reads YAML file, returns raw dict
 config/
-  sample.yaml       — sample config with valid dummy values for all parameters
+  sample.yaml                        — sample config with valid dummy values for all parameters
 tests/
-  test_config.py    — unit tests for Config.from_dict (valid inputs, each validation error)
-  test_config_loader.py — tests for load_config (file not found, unreadable, valid file)
-  test_cli.py       — tests for parse_args (required --config, --validate-config flag)
+  configs/
+    test_cli.py                      — tests for parse_args
+    test_config_positive_cases.py    — Config.from_dict with valid inputs
+    test_config_negative_cases.py    — Config.from_dict with each validation error
+    value_consts.py                  — shared test constants
+  utils/
+    test_yaml_loader.py              — tests for yaml_loader.load (file not found, unreadable, valid)
 ```
 
 ---
@@ -34,56 +47,32 @@ tests/
 
 ---
 
-## Domain Model (`src/config.py`)
+## Domain Model (`src/configs/`)
 
-All enums, validation logic, and the `Config` aggregate live here. Follows DDD: `Config` is always valid if it exists — the `from_dict` factory is the single entry point and enforces all invariants.
+Enums and validation logic are split across several files. The `Config` aggregate and all dimension dataclasses live in `config.py`. Follows DDD: `Config` is always valid if it exists — the `from_dict` factory is the single entry point and enforces all invariants.
 
-### Enums
+### Enums (`src/configs/output_enums.py`, `rate_enums.py`, `dimensions_enums.py`, `config_parameters_enums.py`)
 
 ```python
+# output_enums.py
 class OutputFormat(Enum):
-    JSON                  = "json"
+    JSON                     = "json"
+    XML                      = "xml"
+    CSV                      = "csv"
+    AVRO                     = "avro"
     JSON_WITH_BINARY_PAYLOAD = "json-with-binary-payload"
-    XML                   = "xml"
     XML_WITH_BINARY_PAYLOAD  = "xml-with-binary-payload"
-    CSV                   = "csv"
     CSV_WITH_BINARY_PAYLOAD  = "csv-with-binary-payload"
-    AVRO                  = "avro"
-    AVRO_WITH_BINARY_PAYLOAD = "avro_with_binary_payload"   # underscore — matches PRD exactly
+    AVRO_WITH_BINARY_PAYLOAD = "avro-with-binary-payload"
 
 class OutputType(Enum):
-    KAFKA_ONLY     = "kafka-only"
-    RABBITMQ_ONLY  = "rabbitmq-only"
-    S3_ONLY        = "s3-only"
-    S3_WITH_KAFKA  = "s3-with-kafka"
+    KAFKA_ONLY       = "kafka-only"
+    RABBITMQ_ONLY    = "rabbitmq-only"
+    S3_ONLY          = "s3-only"
+    S3_WITH_KAFKA    = "s3-with-kafka"
     S3_WITH_RABBITMQ = "s3-with-rabbitmq"
 
-class SensorsDimensions(Enum):
-    TEMPERATURE            = "temperature"
-    HUMIDITY               = "humidity"
-    CO2                    = "co2"
-    OZONE                  = "ozone"
-    NITROGEN_DIOXIDE       = "nitrogen_dioxide"
-    BAROMETRIC_PRESSURE    = "barometric_pressure"
-    SOLAR_RADIATION        = "solar_radiation"
-    SALINITY               = "salinity"
-    PH                     = "ph"
-    PLASTICS               = "plastics"
-
-class ComputerDimensions(Enum):
-    CPU_TEMPERATURE  = "cpu_temperature"
-    CPU_UTILIZATION  = "cpu_utilization"
-
-class BatteryDimensions(Enum):
-    BATTERY_TEMPERATURE      = "battery_temperature"
-    BATTERY_PERCENTAGE_LEVEL = "battery_percentage_level"
-
-class SolarPanelDimensions(Enum):
-    CURRENT_VOLTAGE = "current_voltage"
-    CURRENT_AMP     = "current_amp"
-
-# Antenna has no dimensions — only a component-level error rate applies.
-
+# rate_enums.py
 class EmitRate(Enum):
     ONE_PER_SECOND  = "1-per-second"
     TEN_PER_SECOND  = "10-per-second"
@@ -99,92 +88,191 @@ class ErrorRate(Enum):
     HIGH     = 0.5
     CRITICAL = 0.75
     CERTAIN  = 1.0
+
+# dimensions_enums.py  — all values use hyphens as separators
+class SensorDimension(Enum):
+    TEMPERATURE         = "temperature"
+    HUMIDITY            = "humidity"
+    CO2                 = "co2"
+    OZONE               = "ozone"
+    NITROGEN_DIOXIDE    = "nitrogen-dioxide"
+    BAROMETRIC_PRESSURE = "barometric-pressure"
+    SOLAR_RADIATION     = "solar-radiation"
+    SALINITY            = "salinity"
+    PH                  = "ph"
+    PLASTICS            = "plastics"
+
+class ComputerDimension(Enum):
+    CPU_TEMPERATURE = "cpu-temperature"
+    CPU_UTILIZATION = "cpu-utilization"
+
+class BatteryDimension(Enum):
+    BATTERY_TEMPERATURE      = "battery-temperature"
+    BATTERY_PERCENTAGE_LEVEL = "battery-percentage-level"
+
+class SolarPanelDimension(Enum):
+    CURRENT_VOLTAGE = "current-voltage"
+    CURRENT_AMP     = "current-amp"
+
+# config_parameters_enums.py
+class ConfigParameters(Enum):
+    OUTPUT_FORMAT               = "output-format"
+    OUTPUT_TYPE                 = "output-type"
+    NUMBER_OF_DEVICES_PER_FLEET = "number-of-devices-per-fleet"
+    NUMBER_OF_FLEETS            = "number-of-fleets"
+    RATE_OF_EMITTING_DP         = "rate-of-emitting-dp"
+    ERROR_RATE                  = "error-rate"
+    DIMENSIONS                  = "dimensions"
+
+class Components(Enum):
+    SENSORS     = "sensors"
+    COMPUTER    = "computer"
+    BATTERY     = "battery"
+    SOLAR_PANEL = "solar-panel"
 ```
 
-### Config Aggregate
+### Dimension value dataclasses (`src/configs/config.py`)
+
+Each measurable dimension is represented as a `DimensionValue` carrying its enabled state and error rate. Component-level dataclasses group the values and provide `from_dict` factories.
 
 ```python
-@dataclass(frozen=True)
+@dataclass()
+class DimensionValue:
+    is_enabled: bool
+    error_rate: ErrorRate
+
+    def to_dict(self) -> dict: ...
+
+@dataclass()
+class SensorDimensions:
+    temperature: DimensionValue
+    humidity: DimensionValue
+    co2: DimensionValue
+    ozone: DimensionValue
+    nitrogen_dioxide: DimensionValue
+    barometric_pressure: DimensionValue
+    solar_radiation: DimensionValue
+    salinity: DimensionValue
+    ph: DimensionValue
+    plastics: DimensionValue
+
+    def to_dict(self) -> dict: ...
+
+    @staticmethod
+    def from_dict(
+        dimension_data: list[SensorDimension],
+        error_rate: dict[SensorDimension, ErrorRate]
+    ) -> "SensorDimensions": ...
+
+# ComputerDimensions, BatteryDimensions, SolarPanelDimensions follow the same pattern.
+
+@dataclass()
+class Dimensions:
+    sensors:     SensorDimensions
+    computer:    ComputerDimensions
+    battery:     BatteryDimensions
+    solar_panel: SolarPanelDimensions
+
+    def to_dict(self) -> dict: ...
+```
+
+### Config Aggregate (`src/configs/config.py`)
+
+```python
+@dataclass()
 class Config:
     output_format:               OutputFormat
     output_type:                 OutputType
     number_of_devices_per_fleet: int
     number_of_fleets:            int
-    dimensions:                  frozenset[SensorsDimensions | ComputerDimensions |
-                                           BatteryDimensions | SolarPanelDimensions] | Literal["all"]
+    dimensions:                  Dimensions
     rate_of_emitting_dp:         EmitRate
-    error_rate:                  dict[str, dict[str, ErrorRate] | ErrorRate] | None
 ```
 
-- `frozen=True` prevents attribute reassignment after construction.
-- `dimensions` is either the literal string `"all"` or a `frozenset` of typed dimension enum values.
-- `error_rate` is `None` when omitted or set to `none` in the YAML. When present, maps component name (str) to either a single `ErrorRate` (for `antenna`) or a `dict[str, ErrorRate]` (dimension name → rate for all other components).
+- `error_rate` is **not** a top-level field — it is embedded inside each `DimensionValue.error_rate` within `dimensions`.
+- The dataclass is **not** frozen.
 
 ### Factory & Validation (`Config.from_dict`)
 
 - Single classmethod entry point: `Config.from_dict(data: dict) -> Config`
 - Collects **all** validation errors before raising, so the user sees every problem at once.
-- Raises `ValueError` with one error per line.
+- Raises `ConfigError` with one error per line.
+- Also raises `ConfigError` if unrecognised parameter keys are present (guards against typos).
 - Private module-level helpers handle each field type:
   - `_parse_enum` — required enum fields (`output-format`, `output-type`, `rate-of-emitting-dp`)
   - `_parse_positive_int` — `number-of-devices-per-fleet`, `number-of-fleets`
-  - `_parse_dimensions` — handles `"all"` vs. list, maps strings to typed enum values
-  - `_parse_error_rate` — handles `None`/`"none"`, validates components and per-dimension rates
-  - `_parse_error_rate_value` — maps a raw float to an `ErrorRate` enum member
+  - `_parse_dimensions` — handles `"all"` vs. list; resolves error rates per component
+  - `_get_valid_error_rates` — validates component names and delegates per-dimension validation
+  - `_get_valid_error_rate_data` — validates dimension name and maps raw float to `ErrorRate` enum
+  - `_check_if_unsupported_parameter_is_provided` — rejects unknown top-level keys
 
-**PyYAML note:** `error-rate: none` is parsed by PyYAML as Python `None`, same as omitting the key entirely. Both are treated identically.
+**Error rate values:** only the six exact `ErrorRate` enum values are accepted (`0.0`, `0.1`, `0.25`, `0.5`, `0.75`, `1.0`). Any other float is invalid.
 
-### `__str__` Output
+**Omitted `error-rate` key:** `data.get('error-rate', {})` returns `{}`, so all dimension error rates default to `ErrorRate.NONE`. The key must be **omitted** to get this behaviour — providing `error-rate: none` (which PyYAML parses as Python `None`) is treated as an invalid value.
 
-Flat `key: value` per line using original YAML key names (hyphenated):
+### `to_dict()` Output
 
-```
-output-format: json
-output-type: kafka-only
+Returns a nested dict using original YAML key names (hyphenated). Printed in `main.py` via `yaml.dump(config.to_dict())`:
+
+```yaml
+dimensions:
+  battery:
+    battery-percentage-level:
+      error_rate: NONE
+      is_enabled: true
+    battery-temperature:
+      error_rate: NONE
+      is_enabled: true
+  ...
 number-of-devices-per-fleet: 50
 number-of-fleets: 5
-dimensions: all
+output-format: json
+output-type: kafka-only
 rate-of-emitting-dp: 10-per-second
-error-rate: sensors.temperature=low, sensors.humidity=medium, antenna=high
 ```
-
-When `dimensions` is a frozenset, values are printed sorted and comma-separated.
-When `error_rate` is `None`, prints `error-rate: none`.
 
 ---
 
-## IO Layer (`src/config_loader.py`)
+## IO Layer (`src/utils/yaml_loader.py`)
 
 Pure IO — no validation logic:
 
 ```python
-def load_config(path: str) -> Config:
-    # open file → yaml.safe_load → Config.from_dict
+def load(path: str) -> dict[str, Any]:
+    # open file → yaml.safe_load → return raw dict
 ```
 
-Raises `FileNotFoundError` or `OSError` on file access failure.
-Raises `ValueError` (from `Config.from_dict`) on invalid config content.
+Raises `YamlError` on file-not-found or any other read failure. `Config` construction is done separately in `main.py` via `Config.from_dict(loaded_dict)`.
 
 ---
 
-## CLI Layer (`src/cli.py`)
+## CLI Layer (`src/configs/cli.py`)
 
 ```python
-def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+@dataclass
+class CliParsedArgs:
+    config_filepath: str
+    is_validate_config_enabled: bool
+
+def parse_args(argv: list[str]) -> CliParsedArgs:
 ```
 
 Defines:
 - `--config PATH` (required)
 - `--validate-config` (flag, optional)
 
+Returns a typed `CliParsedArgs` dataclass, not a raw `argparse.Namespace`.
+
 ---
 
-## Orchestration (`src/main.py`)
+## Orchestration (`main.py`)
 
-1. `parse_args()` → args
-2. `load_config(args.config)` → config (exits with non-zero on any error, printing to stderr)
-3. If `--validate-config`: print config, exit 0
-4. Else: print `Executing started....`, exit 0
+1. `cli.parse_args(sys.argv[1:])` → `CliParsedArgs`
+2. `yaml_loader.load(args.config_filepath)` → raw dict (raises `YamlError` on failure)
+3. `Config.from_dict(loaded_dict)` → `Config` (raises `ConfigError` on invalid content)
+4. Any exception is caught, printed to stderr, and exits with code `1`
+5. If `--validate-config`: `yaml.dump(config.to_dict())` → stdout, exit 0
+6. Else: print `Executing started....`, exit 0
 
 ---
 
@@ -202,8 +290,7 @@ error-rate:
     temperature: 0.1
     humidity: 0.25
   computer:
-    cpu_temperature: 0.1
-  antenna: 0.5
+    cpu-temperature: 0.1
 ```
 
 ---
@@ -216,19 +303,21 @@ error-rate:
 | `output-type` | Must be one of the 5 `OutputType` enum values |
 | `number-of-devices-per-fleet` | Must be a positive integer |
 | `number-of-fleets` | Must be a positive integer |
-| `dimensions` | `"all"` or a non-empty list of known dimension strings |
+| `dimensions` | `"all"` or a non-empty list of known hyphenated dimension strings |
 | `rate-of-emitting-dp` | Must be one of the 6 `EmitRate` enum values |
-| `error-rate` | Optional. If present: valid component names, valid dimension names per component, float values matching an `ErrorRate` enum member |
+| `error-rate` | Optional. If present: valid component names (`sensors`, `computer`, `battery`, `solar-panel`), valid hyphenated dimension names per component, float values matching an `ErrorRate` enum member exactly |
+| _(any unknown key)_ | Rejected as unsupported parameter |
 
-All parameters except `error-rate` are required. Missing required parameters are reported explicitly by name.
+All parameters except `error-rate` are required. Missing required parameters are reported explicitly by name. All errors are collected and reported together.
 
 ---
 
 ## Testability Notes
 
-Tests live in `tests/` at the project root.
+Tests live in `tests/` at the project root, mirroring the `src/` structure.
 
 - `Config.from_dict(dict)` can be called directly in tests without touching the filesystem.
-- `config_loader.load_config(path)` can be tested by pointing at a temp file.
+- `yaml_loader.load(path)` can be tested by pointing at a temp file or a fixture file.
 - `cli.parse_args(argv)` accepts a list, so no `sys.argv` patching needed.
 - No monkey-patching required anywhere.
+- Config tests are split into `test_config_positive_cases.py` and `test_config_negative_cases.py`. Shared constants live in `value_consts.py`.
