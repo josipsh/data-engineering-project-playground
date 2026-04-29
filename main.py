@@ -6,6 +6,16 @@ import src.configs.cli as cli
 import src.utils.yaml_loader as yaml_loader
 from src.configs.cli import CliParsedArgs
 from src.configs.config import Config
+from src.generator.data_generator import DataGenerator
+from src.generator.models import DeviceOutput
+
+
+def _print_to_stdout(outputs: list[DeviceOutput]) -> None:
+    for device_output in outputs:
+        print(device_output.device_id)
+        for record in device_output.records:
+            print(f"{record.record_number} - {record.battery} | {record.temperature}")
+        print("-----------")
 
 
 def main() -> None:
@@ -18,6 +28,11 @@ def main() -> None:
         if cli_args.is_validate_config_enabled:
             config_dict = parsed_config.to_dict()
             print(yaml.dump(config_dict))
+            return
+
+        if cli_args.is_stdout_enabled:
+            outputs = DataGenerator(parsed_config).generate()
+            _print_to_stdout(outputs)
             return
 
         print("Executing started....")
