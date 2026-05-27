@@ -1,0 +1,12 @@
+output-format: json
+output-type: kafka-only
+number-of-devices-per-fleet: 10
+number-of-fleets: 1
+dimensions: all
+rate-of-emitting-dp: 1-per-hour
+error-rate:
+  sensors:
+    temperature: 0.1
+    humidity: 0.25
+  computer:
+    cpu-temperature: 0.1
